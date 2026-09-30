@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.angular/
+.env
+*.log
+error.log
+data/
+*.db
+*.db-wal
+*.db-shm
+.env.example
