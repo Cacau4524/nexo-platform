@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LogoComponent } from '../../shared/logo.component';
@@ -66,6 +66,7 @@ const LAST = 'nexo.lastCompany'; // apenas conveniência: preenche o campo; não
                   <input class="input" type="password" name="password" [(ngModel)]="password" autocomplete="current-password" required /></label>
                 @if (error()) { <div class="notice notice-error" role="alert">{{ error() }}</div> }
                 <button class="btn btn-primary btn-block" type="submit" [disabled]="loading()">{{ loading() ? 'Entrando…' : 'Entrar' }}</button>
+                <p class="legal">Ao entrar, você concorda com os <button class="link inline" type="button" (click)="openTerms('termos')">Termos de Uso</button> e a <button class="link inline" type="button" (click)="openTerms('privacidade')">Política de Privacidade</button>.</p>
               </form>
             } @else {
               <h1>Seus dados</h1>
@@ -98,8 +99,12 @@ const LAST = 'nexo.lastCompany'; // apenas conveniência: preenche o campo; não
                     </select></label>
                   <label class="field"><span>Telefone (opcional)</span>
                     <input class="input" type="tel" name="phone" [(ngModel)]="phone" autocomplete="tel" inputmode="tel" /></label>
+                  <label class="check">
+                    <input type="checkbox" name="terms1" [(ngModel)]="accepted" />
+                    <span>Li e aceito os <button class="link inline" type="button" (click)="openTerms('termos')">Termos de Uso</button> e a <button class="link inline" type="button" (click)="openTerms('privacidade')">Política de Privacidade</button>.</span>
+                  </label>
                   @if (error()) { <div class="notice notice-error" role="alert">{{ error() }}</div> }
-                  <button class="btn btn-primary btn-block" type="submit" [disabled]="loading()">{{ loading() ? 'Criando conta…' : 'Criar conta' }}</button>
+                  <button class="btn btn-primary btn-block" type="submit" [disabled]="loading() || !accepted">{{ loading() ? 'Criando conta…' : 'Criar conta' }}</button>
                 </form>
               }
             }
@@ -121,13 +126,60 @@ const LAST = 'nexo.lastCompany'; // apenas conveniência: preenche o campo; não
                 <small>Mínimo de 8 caracteres; não pode ser só números.</small></label>
               <label class="field"><span>Cargo (opcional)</span>
                 <input class="input" name="jobTitle3" [(ngModel)]="jobTitle" autocomplete="organization-title" /></label>
-              @if (error()) { <div class="notice notice-error" role="alert">{{ error() }}</div> }
-              <button class="btn btn-primary btn-block" type="submit" [disabled]="loading()">{{ loading() ? 'Criando…' : 'Criar empresa e entrar' }}</button>
+              <label class="check">
+                    <input type="checkbox" name="terms2" [(ngModel)]="accepted" />
+                    <span>Li e aceito os <button class="link inline" type="button" (click)="openTerms('termos')">Termos de Uso</button> e a <button class="link inline" type="button" (click)="openTerms('privacidade')">Política de Privacidade</button>.</span>
+                  </label>
+                  @if (error()) { <div class="notice notice-error" role="alert">{{ error() }}</div> }
+              <button class="btn btn-primary btn-block" type="submit" [disabled]="loading() || !accepted">{{ loading() ? 'Criando…' : 'Criar empresa e entrar' }}</button>
             </form>
           }
         }
       </div>
     </div>
+    @if (terms(); as tab) {
+      <div class="m-scrim" (click)="terms.set(null)"></div>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+        <header>
+          <h2 id="m-title">{{ tab === 'termos' ? 'Termos de Uso' : 'Política de Privacidade' }}</h2>
+          <button class="m-x" type="button" (click)="terms.set(null)" aria-label="Fechar">✕</button>
+        </header>
+        <div class="m-tabs" role="tablist">
+          <button role="tab" type="button" [class.on]="tab === 'termos'" (click)="terms.set('termos')">Termos de Uso</button>
+          <button role="tab" type="button" [class.on]="tab === 'privacidade'" (click)="terms.set('privacidade')">Privacidade</button>
+        </div>
+        <div class="m-body">
+          @if (tab === 'termos') {
+            <h3>1. O que é o NEXO</h3>
+            <p>O NEXO é uma plataforma de inteligência preventiva para riscos psicossociais no trabalho. Ele ajuda a organização a entender a rotina e a agir antes que problemas coletivos se agravem.</p>
+            <h3>2. O que o NEXO não é</h3>
+            <p>O NEXO não é terapia, não faz diagnóstico médico ou psicológico e não substitui psicólogo, médico ou qualquer profissional de saúde. Em caso de sofrimento, procure os canais de apoio da sua empresa ou um profissional.</p>
+            <h3>3. Uso responsável</h3>
+            <p>Responda com sinceridade e use a plataforma apenas para a finalidade a que ela se destina. Não informe nomes de pacientes, documentos, prontuários ou dados que identifiquem terceiros.</p>
+            <h3>4. Sua conta</h3>
+            <p>Mantenha sua senha em segurança. Você é responsável pelas ações feitas com a sua conta.</p>
+            <h3>5. Uso proibido dos dados</h3>
+            <p>Os dados psicossociais não podem ser usados para punição, avaliação de desempenho ou exposição individual.</p>
+            <h3>6. Alterações</h3>
+            <p>Estes termos podem ser atualizados. Mudanças relevantes serão comunicadas na plataforma.</p>
+          } @else {
+            <h3>Como tratamos seus dados</h3>
+            <p>Tratamos seus dados conforme a Lei Geral de Proteção de Dados (LGPD, Lei 13.709/2018), com finalidade, necessidade e transparência.</p>
+            <h3>O que os gestores veem</h3>
+            <p>Somente resultados agregados por setor ou equipe, e apenas quando há um número mínimo de participantes. Gestores nunca veem as respostas de uma pessoa.</p>
+            <h3>O que você vê</h3>
+            <p>Somente os seus próprios registros e histórico.</p>
+            <h3>Comentários e IA</h3>
+            <p>Comentários são armazenados protegidos e apagados após o período de retenção. Antes de qualquer análise automática, e-mails, telefones e documentos são removidos do texto.</p>
+            <h3>Seus direitos</h3>
+            <p>Você pode acessar, exportar e apagar o que foi registrado sobre você, e pedir esclarecimentos ao encarregado (DPO) da sua empresa.</p>
+            <h3>O que o NEXO não faz</h3>
+            <p>Não monitora e-mails, chats ou canais privados, não faz diagnóstico e não rotula pessoas.</p>
+          }
+        </div>
+        <button class="btn btn-primary btn-block" type="button" (click)="terms.set(null)">Entendi</button>
+      </section>
+    }
   `,
   styles: [`
     .wrap {
@@ -149,6 +201,26 @@ const LAST = 'nexo.lastCompany'; // apenas conveniência: preenche o campo; não
     .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--ink-soft); border-radius: var(--r-md); }
     .tabs button { min-height: 44px; border: none; background: none; border-radius: var(--r-sm); font-weight: 600; font-size: 14.5px; color: var(--muted); cursor: pointer; }
     .tabs button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+    .legal { font-size: 12.5px; color: var(--muted); line-height: 1.55; text-align: center; margin: 2px 0 0; }
+    .legal .link { font-size: 12.5px; padding: 0; text-decoration: underline; }
+    .check { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); cursor: pointer; }
+    .check input { flex: none; width: 22px; height: 22px; margin-top: 1px; accent-color: var(--accent); }
+    .check .link { font-size: 13.5px; padding: 0; text-decoration: underline; }
+    .m-scrim { position: fixed; inset: 0; z-index: 100; background: var(--scrim); }
+    .modal { position: fixed; z-index: 110; left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom)); max-width: 520px; max-height: 86dvh; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 12px; padding: 20px; background: var(--surface); color: var(--ink);
+      border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); }
+    .modal header { display: flex; align-items: center; justify-content: space-between; }
+    .modal h2 { font-size: 19px; }
+    .m-x { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--ink-soft); color: var(--ink); cursor: pointer; }
+    .m-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--ink-soft); border-radius: var(--r-md); }
+    .m-tabs button { min-height: 40px; border: none; background: none; border-radius: var(--r-sm); font-weight: 600; font-size: 14px; color: var(--muted); cursor: pointer; }
+    .m-tabs button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+    .m-body { overflow: auto; padding-right: 4px; }
+    .m-body h3 { font-size: 14.5px; margin: 14px 0 4px; }
+    .m-body h3:first-child { margin-top: 0; }
+    .m-body p { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+    @media (min-width: 720px) { .modal { top: 50%; bottom: auto; transform: translateY(-50%); } }
     @media (min-width: 720px) {
       .wrap { align-items: center; }
       .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); padding: 32px; }
@@ -167,6 +239,8 @@ export class AuthComponent {
   loading = signal(false);
   error = signal<string | null>(null);
   allowSignup = signal(true);
+  terms = signal<'termos' | 'privacidade' | null>(null);
+  accepted = false;
 
   companyQuery = '';
   companyName = '';
@@ -188,11 +262,14 @@ export class AuthComponent {
     fetch(`${API_BASE}/config`).then(r => r.json()).then(c => this.allowSignup.set(c.allowCompanySignup !== false)).catch(() => undefined);
   }
 
+  openTerms(t: 'termos' | 'privacidade') { this.terms.set(t); }
+  @HostListener('document:keydown.escape') onEsc() { this.terms.set(null); }
+
   toggleTheme() { this.theme.apply(this.theme.next()); }
 
   pickSector(id: number | null) { this.sectorId.set(id); this.teamId.set(null); }
 
-  reset() { this.step.set('company'); this.company.set(null); this.error.set(null); this.password = ''; }
+  reset() { this.accepted = false; this.step.set('company'); this.company.set(null); this.error.set(null); this.password = ''; }
   goNewCompany() { this.error.set(null); this.step.set('newCompany'); }
 
   async lookup() {
@@ -222,6 +299,7 @@ export class AuthComponent {
     this.error.set(null);
     const c = this.company();
     if (!c) return;
+    if (!this.accepted) { this.error.set('Aceite os Termos de Uso e a Política de Privacidade para continuar.'); return; }
     if (!this.sectorId() || !this.teamId()) { this.error.set('Selecione o setor e a equipe.'); return; }
     await this.run(async () => this.finish(await this.api.post<AuthResponse>('/auth/register', {
       company: c.code, name: this.name, email: this.email, password: this.password,
@@ -231,6 +309,7 @@ export class AuthComponent {
 
   async createCompany() {
     this.error.set(null);
+    if (!this.accepted) { this.error.set('Aceite os Termos de Uso e a Política de Privacidade para continuar.'); return; }
     await this.run(async () => this.finish(await this.api.post<AuthResponse>('/auth/register-company', {
       companyName: this.companyName, name: this.name, email: this.email, password: this.password, jobTitle: this.jobTitle || undefined,
     })));
