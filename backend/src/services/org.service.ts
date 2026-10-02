@@ -3,7 +3,7 @@ import { audit, isDuplicateError } from './context';
 import type { Ctx } from './context';
 import { assertSectorTeam } from './auth.service';
 import { participation, parseWeeks } from './analytics.service';
-import { bad, conflict, email as vEmail, forbidden, id as vId, notFound, optId, phone as vPhone, str } from '../utils/validate';
+import { bad, conflict, email as vEmail, forbidden, id as vId, notFound, optId, phone as vPhone, str, nameKey } from '../utils/validate';
 import { weekKeys } from '../utils/week';
 import { inList } from '../database/db';
 
@@ -24,9 +24,25 @@ export async function getCompany(ctx: Ctx) {
 }
 
 export async function updateCompany(ctx: Ctx, body: Record<string, unknown>) {
-  if (typeof body.selfSignup !== 'boolean') throw bad('Nada para atualizar.');
-  await getDb().run('UPDATE companies SET self_signup = ? WHERE id = ?', [body.selfSignup ? 1 : 0, ctx.companyId]);
-  await audit(ctx.companyId, ctx.userId, 'company_updated', `self_signup=${body.selfSignup}`);
+  const db = getDb();
+  const changed: string[] = [];
+  if (body.name !== undefined) {
+    const name = str(body.name, 'o nome da empresa', { min: 2, max: 160 });
+    try {
+      await db.run('UPDATE companies SET name = ?, name_key = ? WHERE id = ?', [name, nameKey(name), ctx.companyId]);
+    } catch (e) {
+      if (isDuplicateError(e)) throw conflict('Já existe uma empresa cadastrada com este nome.', 'company_exists');
+      throw e;
+    }
+    changed.push('name');
+  }
+  if (body.selfSignup !== undefined) {
+    if (typeof body.selfSignup !== 'boolean') throw bad('Valor inválido para o cadastro aberto.');
+    await db.run('UPDATE companies SET self_signup = ? WHERE id = ?', [body.selfSignup ? 1 : 0, ctx.companyId]);
+    changed.push(`self_signup=${body.selfSignup}`);
+  }
+  if (!changed.length) throw bad('Nada para atualizar.');
+  await audit(ctx.companyId, ctx.userId, 'company_updated', changed.join(', '));
   return getCompany(ctx);
 }
 

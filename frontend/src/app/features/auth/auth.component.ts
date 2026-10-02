@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, inject, sig
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LogoComponent } from '../../shared/logo.component';
+import { IconComponent } from '../../shared/icon.component';
 import { ApiService } from '../../core/api.service';
 import { API_BASE } from '../../core/config';
 import { AuthService } from '../../core/auth.service';
@@ -14,14 +15,14 @@ const LAST = 'nexo.lastCompany'; // apenas conveniência: preenche o campo; não
 @Component({
   selector: 'nx-auth',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, LogoComponent],
+  imports: [FormsModule, LogoComponent, IconComponent],
   template: `
     <div class="wrap">
       <div class="panel rise">
         <div class="top">
           <nx-logo [size]="32" />
           <button class="theme" type="button" (click)="toggleTheme()" [attr.aria-label]="theme.mode() === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'">
-            {{ theme.mode() === 'dark' ? '☀️' : '🌙' }}
+            <nx-icon [name]="theme.mode() === 'dark' ? 'sun' : 'moon'" />
           </button>
         </div>
 
@@ -192,7 +193,7 @@ const LAST = 'nexo.lastCompany'; // apenas conveniência: preenche o campo; não
     }
     .panel { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 14px; }
     .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .theme { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-size: 18px; cursor: pointer; }
+    .theme { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
     .link { background: none; border: none; color: var(--accent-ink); font-weight: 600; font-size: 14px; padding: 12px 4px; cursor: pointer; text-align: center; }
     .link.inline { padding: 4px 0; width: auto; }
     .back { align-self: flex-start; color: var(--muted); }

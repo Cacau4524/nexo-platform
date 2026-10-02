@@ -41,6 +41,8 @@ router.post('/auth/login', loginLimiter, h(auth.login));
 
 // ---------------------------------------------------------------- qualquer perfil autenticado (sempre no escopo do PRÓPRIO usuário)
 router.get('/auth/me', ...anyRole, h(auth.me));
+router.put('/me/profile', ...anyRole, writeLimiter, h(auth.updateProfile));
+router.put('/me/password', ...anyRole, limiter(10, 15, 'Muitas tentativas. Aguarde alguns minutos.'), h(auth.changePassword));
 router.put('/me/theme', ...anyRole, writeLimiter, h(auth.setTheme));
 router.get('/me/export', ...anyRole, exportLimiter, h(data.exportMe));
 router.delete('/me/checkins', ...anyRole, writeLimiter, h(data.deleteMe));

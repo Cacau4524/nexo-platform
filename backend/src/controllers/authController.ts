@@ -38,6 +38,20 @@ export const me = async (req: Request, res: Response) => {
   res.json({ user });
 };
 
+export const updateProfile = async (req: Request, res: Response) => {
+  const ctx = ctxOf(req);
+  await auth.updateProfile(ctx.companyId, ctx.userId, ctx.role, req.body ?? {});
+  const user = await auth.sessionUser(ctx.companyId, ctx.userId);
+  if (!user) throw new HttpError(401, 'auth_invalid', 'Sessão inválida.');
+  res.json({ user });
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+  const ctx = ctxOf(req);
+  await auth.changePassword(ctx.companyId, ctx.userId, req.body ?? {});
+  res.json({ ok: true });
+};
+
 export const setTheme = async (req: Request, res: Response) => {
   const ctx = ctxOf(req);
   await auth.setTheme(ctx.companyId, ctx.userId, req.body?.theme);

@@ -8,6 +8,7 @@ export interface SessionUser {
   email: string;
   role: Role;
   jobTitle: string | null;
+  phone?: string | null;
   sectorId: number | null;
   sectorName: string | null;
   teamId: number | null;

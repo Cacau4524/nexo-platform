@@ -37,7 +37,7 @@ export async function companyPublicInfo(company: CompanyRow) {
 
 // ------------------------------------------------------------------ sessão
 export interface SessionUser {
-  id: number; name: string; email: string; role: 'employee' | 'manager'; jobTitle: string | null;
+  id: number; name: string; email: string; role: 'employee' | 'manager'; jobTitle: string | null; phone: string | null;
   sectorId: number | null; sectorName: string | null; teamId: number | null; teamName: string | null;
   theme: 'light' | 'dark' | null;
   company: { name: string; code?: string };
@@ -45,7 +45,7 @@ export interface SessionUser {
 
 export async function sessionUser(companyId: number, userId: number): Promise<SessionUser | null> {
   const rows = await getDb().query<any>(
-    `SELECT u.id, u.name, u.email, u.role, u.job_title, u.sector_id, u.team_id, u.theme, c.name AS company_name, c.code AS company_code,
+    `SELECT u.id, u.name, u.email, u.role, u.job_title, u.phone, u.sector_id, u.team_id, u.theme, c.name AS company_name, c.code AS company_code,
             s.name AS sector_name, t.name AS team_name
        FROM users u
        JOIN companies c ON c.id = u.company_id
@@ -55,7 +55,7 @@ export async function sessionUser(companyId: number, userId: number): Promise<Se
   const u = rows[0];
   if (!u) return null;
   return {
-    id: u.id, name: u.name, email: u.email, role: u.role, jobTitle: u.job_title,
+    id: u.id, name: u.name, email: u.email, role: u.role, jobTitle: u.job_title, phone: u.phone ?? null,
     sectorId: u.sector_id, sectorName: u.sector_name, teamId: u.team_id, teamName: u.team_name,
     theme: u.theme === 'light' || u.theme === 'dark' ? u.theme : null,
     // O código da empresa (usado para convidar pessoas) só é mostrado ao gestor.
@@ -195,6 +195,42 @@ export async function login(input: Record<string, unknown>, ip = '') {
 export async function setTheme(companyId: number, userId: number, theme: unknown) {
   if (theme !== 'light' && theme !== 'dark') throw bad('Tema inválido.');
   await getDb().run('UPDATE users SET theme = ? WHERE company_id = ? AND id = ?', [theme, companyId, userId]);
+}
+
+/**
+ * Perfil do PRÓPRIO usuário. Todos editam nome, cargo e telefone; o gestor também edita o e-mail de acesso.
+ * Setor e equipe só mudam pelo gestor (em Pessoas), para não distorcer os indicadores agregados.
+ */
+export async function updateProfile(companyId: number, userId: number, role: 'employee' | 'manager', body: Record<string, unknown>) {
+  const db = getDb();
+  const sets: string[] = []; const p: unknown[] = [];
+  const set = (col: string, v: unknown) => { sets.push(`${col} = ?`); p.push(v); };
+  if (body.name !== undefined) set('name', str(body.name, 'seu nome', { min: 3, max: 160 }));
+  if (body.jobTitle !== undefined) set('job_title', str(body.jobTitle, 'o cargo', { max: 120, optional: true }) || null);
+  if (body.phone !== undefined) set('phone', vPhone(body.phone));
+  if (body.email !== undefined) {
+    if (role !== 'manager') throw forbidden('Somente o gestor pode alterar o e-mail de acesso.');
+    set('email', vEmail(body.email));
+  }
+  if (!sets.length) throw bad('Nada para atualizar.');
+  try {
+    await db.run(`UPDATE users SET ${sets.join(', ')} WHERE company_id = ? AND id = ?`, [...p, companyId, userId]);
+  } catch (e) {
+    if (isDuplicateError(e)) throw conflict('Já existe um usuário com este e-mail nesta empresa.', 'email_taken');
+    throw e;
+  }
+  await audit(companyId, userId, 'profile_updated', sets.map(s => s.split(' ')[0]).join(', '));
+}
+
+export async function changePassword(companyId: number, userId: number, body: Record<string, unknown>) {
+  const db = getDb();
+  const cur = (await db.query<any>('SELECT password_hash FROM users WHERE company_id = ? AND id = ?', [companyId, userId]))[0];
+  if (!cur) throw bad('Conta não encontrada.');
+  if (!(await verifyPassword(String(body.currentPassword ?? ''), cur.password_hash))) throw bad('A senha atual não confere.', 'wrong_password');
+  const problem = passwordProblem(body.newPassword);
+  if (problem) throw bad(problem);
+  await db.run('UPDATE users SET password_hash = ? WHERE company_id = ? AND id = ?', [await hashPassword(String(body.newPassword)), companyId, userId]);
+  await audit(companyId, userId, 'password_changed', 'Senha alterada pelo próprio usuário');
 }
 
 export async function loadAuthUser(userId: number) {

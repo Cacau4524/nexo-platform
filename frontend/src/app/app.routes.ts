@@ -30,6 +30,7 @@ export const routes: Routes = [
       { path: 'intervencoes', canActivate: [manager], loadComponent: () => import('./features/manager/interventions.component').then(m => m.InterventionsComponent) },
       { path: 'relatorios', canActivate: [manager], loadComponent: () => import('./features/manager/reports.component').then(m => m.ReportsComponent) },
       // ambos
+      { path: 'perfil', loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
       { path: 'privacidade', loadComponent: () => import('./features/privacy/privacy.component').then(m => m.PrivacyComponent) },
     ],
   },
